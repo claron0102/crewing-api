@@ -1,0 +1,14 @@
+
+services:
+  app:
+    build:
+      context: .
+      target: local
+    restart: always
+    volumes:
+      - .:/var/www/html  # Your application code
+      
+   
+      
+    ports:
+      - '9000:80'  # Exposing the container to port 9050 on the host
