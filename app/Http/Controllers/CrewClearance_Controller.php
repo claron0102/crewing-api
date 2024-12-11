@@ -50,12 +50,10 @@ class CrewClearance_Controller extends Controller
         ->first();
     
 
-    $date_effective=date("Y-m-d", strtotime($earliestEffectiveAt->effective_at));   
-            }
+         $date_effective=date("Y-m-d", strtotime($earliestEffectiveAt->effective_at));   
+          
+        }
 
-
-
-    
       $fleet = DB::table('tbl_crew_clearance as crew')
       ->join('tbl_crew_assignments as ca', function ($join) {
           $join->on('crew.ref_emp', '=', 'ca.ref_employee')
@@ -68,14 +66,14 @@ class CrewClearance_Controller extends Controller
                 'ca.effective_at',
                 'crew.datetime_created',
                 'ca.ref_bus',
-                'ca.ref_classification',
+               DB::raw('LOWER(ca.ref_classification) as ref_classification'),
                 'ca.ref_position',
                 'ca.ref_employee',
                 'bus.bus_no',
                 DB::raw('LOWER(emp.fullname) as fullname'),
                 DB::raw('LOWER(emp.positionname) as positionname'),
                 'emp.employeeids as emp_id',
-                DB::raw('LOWER(emp.companies) as company'),
+                 'emp.companies as company',
                 'emp.companiesid as comp_id',
                 'crew.flag',
                 DB::raw("CASE
@@ -128,8 +126,8 @@ class CrewClearance_Controller extends Controller
 
     
       $timestamp = now()->toISOString();  
-      $data = []; 
-
+   
+      $data =array();
       if (empty($fleet)) {
          $employee=$this->employee_record($id);
        
@@ -230,7 +228,7 @@ class CrewClearance_Controller extends Controller
                           "message"=> "No fleet assigned to this conductor at the given time."
                     ];
               }
-              $data[] = $dataItem;
+              $data = $dataItem;
          }   
     
     }
