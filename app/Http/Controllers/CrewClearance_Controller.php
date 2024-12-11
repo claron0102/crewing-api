@@ -169,7 +169,7 @@ class CrewClearance_Controller extends Controller
                       $dataItem['error'] = 'Invalid Position';
                   }
               }
-              $data[] = $dataItem;
+              $data= $dataItem;
               }
               else
               {
