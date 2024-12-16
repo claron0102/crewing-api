@@ -8,15 +8,15 @@ use  App\Models\CrewAssignment;
 use  App\Models\Employee;
 use  App\Models\Crew;
 use App\Services\CrewClearanceService;  // Import the service class
-use App\Services\RouteService;  
+
 class CrewClearance_Controller extends Controller
 {
-    protected $CrewClearanceService;
+    protected $crewClearanceService;
 
     // Constructor injection
-    public function __construct(CrewClearanceService $CrewClearanceService)
+    public function __construct(CrewClearanceService $crewClearanceService)
     {
-        $this->CrewClearanceService = $CrewClearanceService;
+        $this->crewClearanceService = $crewClearanceService;
     }
  
     public function conductor_verification($id, Request $request)
@@ -25,7 +25,7 @@ class CrewClearance_Controller extends Controller
  
      
 
-        $employee =  $this->CrewClearanceService->search_crew($id);
+        $employee =  $this->crewClearanceService->search_crew($id);
     
         if (empty($employee)) {
           
@@ -41,19 +41,19 @@ class CrewClearance_Controller extends Controller
          if(!empty($at))  
             {
 
-            $earliestEffectiveAt=$this->CrewClearanceService->effectivity_crew_specific($id,$at);
+            $earliestEffectiveAt=$this->crewClearanceService->effectivity_crew_specific($id,$at);
            
           
             if (empty($earliestEffectiveAt)) {
                 return $this->employeenotfound($id);
             }
     
-            $nxt_sched=$this->CrewClearanceService->next_schedule($earliestEffectiveAt->ref_bus,$at);
+            $nxt_sched=$this->crewClearanceService->next_schedule($earliestEffectiveAt->ref_bus,$at);
             $date_effective=date("Y-m-d", strtotime($earliestEffectiveAt->effective_at));   
           
         }
 
-        $fleet = $this->CrewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,0,0,$conductor_data,$cleared_data);
+        $fleet = $this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,0,0,$conductor_data,$cleared_data);
       
           $timestamp = now()->toISOString();  
          
@@ -208,19 +208,19 @@ public function fleet_crew($id, Request $request)
         if(!empty($at))  
         {
 
-        $earliestEffectiveAt=$this->CrewClearanceService->effectivity_crew($id,$at);
+        $earliestEffectiveAt=$this->crewClearanceService->effectivity_crew($id,$at);
         if (empty($earliestEffectiveAt)) {
             return $this->employeenotfound($id);
         }
 
-        $nxt_sched=$this->CrewClearanceService->next_schedule($earliestEffectiveAt->ref_bus,$at);
+        $nxt_sched=$this->crewClearanceService->next_schedule($earliestEffectiveAt->ref_bus,$at);
         $date_effective=date("Y-m-d", strtotime($earliestEffectiveAt->effective_at));   
       
     }
 
    if($checkExisting==false||$checkExisting==true&&$cleared_data=='true'||$checkExisting==true&&$atexisting=='true'){
-    $driver=$this->CrewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$cleared_data);
-    $conductor=$this->CrewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$cleared_data);
+    $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$cleared_data);
+    $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$cleared_data);
    }
 else{
    return  $this->invalidRequestQuery();
