@@ -11,6 +11,7 @@ Route::get('/user', function (Request $request) {
 Route::apiResource('crewClearance', CrewClearance_Controller::class);
 
 Route::middleware([ValidateAppToken::class])->group(function () {
-    Route::get('/conductors/{id}/fleet', [CrewClearance_Controller::class, 'show']);
+    Route::get('/conductors/{id}/fleet', [CrewClearance_Controller::class, 'conductor_verification']);
+    Route::get('/fleets/{id}/crew', [CrewClearance_Controller::class, 'fleet_crew']);
     
 });

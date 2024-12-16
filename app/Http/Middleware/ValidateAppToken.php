@@ -1,21 +1,5 @@
 <?php
-// namespace App\Http\Middleware;
-
-// use Closure;
-// use Illuminate\Http\Request;
-
-// class ValidateAppToken
-// {
-//     public function handle(Request $request, Closure $next)
-//     {
-//         // Add your token validation logic
-//         if ($request->header('Authorization') !== 'f2d4e3a0c9b22c485fbaf23c6d8174f74d8e6b9f8d7a5e9f536c4adbc84a8f5a') {
-//             return response()->json(['message' => 'Unauthorized'], 401);
-//         }
-
-//         return $next($request);
-//     }
-// }
+ 
 
  namespace App\Http\Middleware;
 
