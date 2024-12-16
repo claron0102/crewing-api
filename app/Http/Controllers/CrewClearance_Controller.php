@@ -17,24 +17,21 @@ class CrewClearance_Controller extends Controller
     {
         $this->crewClearanceService = $crewClearanceService;
     }
-    public function index()
-    {
-        $CrewClearance = CrewClearance::get();
-        return response()->json($CrewClearance);
-    }
-
+ 
     public function conductor_verification($id, Request $request)
     {
 
  
-        $employee = $this->employee_record($id);
+     
 
-       
+        $employee =  $this->crewClearanceService->search_crew($id);
+    
         if (empty($employee)) {
-            return $this->employeenotfound($id);
-        
+          
+            return $this->employee_record($id);
+         
         }else{
-
+        
  $at = $request->query('at');
         $date_effective='0000-00-00';
         $conductor_data =0;
@@ -44,6 +41,8 @@ class CrewClearance_Controller extends Controller
             {
 
             $earliestEffectiveAt=$this->crewClearanceService->effectivity_crew_specific($id,$at);
+           
+          
             if (empty($earliestEffectiveAt)) {
                 return $this->employeenotfound($id);
             }
@@ -54,11 +53,11 @@ class CrewClearance_Controller extends Controller
         }
 
         $fleet = $this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,0,0,$conductor_data,$cleared_data);
-
+      
           $timestamp = now()->toISOString();  
-   
+         
             $data =array();
-            if (empty($fleet)) {
+            if (empty($fleet)|| count($fleet)==0) {
                 $employee=$this->employee_record($id);
             return $employee;
             }
@@ -441,7 +440,7 @@ else{
 }
 
     private function employee_record($emp_id){
-      
+     
         $employee =$this->employee_record_list($emp_id);
 
         if(!empty($employee)){
@@ -450,25 +449,27 @@ else{
                 'timestamp' => now()->toDateTimeString(),
                 "status"=>"unassigned",
                 "fleet"=> null,
-                "error"=> "No fleet assigned to this conductor at the given time."
+                "error"=> "no fleet assigned to this conductor at the given time."
             ],);
               }
             else
                 {
-                  null;
+                    return response()->json([
+                        'error' =>'not found',
+                        'message' => 'conductor with ID '.$emp_id.' does not exist.' ], 404);
                 }
     }
 
 
     private function employeenotfound($id){
         return response()->json([
-               'error' =>'Not Found',
-               'message' => 'Conductor with ID '.$id.' does not exist.' ], 404);
+               'error' =>'not found',
+               'message' => 'conductor with ID '.$id.' does not exist.' ], 404);
        }
   private function invalidRequestQuery(){
     return response()->json([
-        'error' => 'Invalid parameter',
-        'message' => 'Please check the provided parameters.',
+        'error' => 'invalid parameter',
+        'message' => 'please check the provided parameters.',
     ], 400);
        }
    
@@ -481,8 +482,8 @@ else{
  
     private function crewnotfound($id){
        return response()->json([
-          'error' =>'Not Found',
-          'message' => 'Conductor with ID '.$id.' does not exist.'], 404);
+          'error' =>'not Found',
+          'message' => 'conductor with ID '.$id.' does not exist.'], 404);
         }
 
 

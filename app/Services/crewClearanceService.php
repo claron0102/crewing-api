@@ -155,4 +155,17 @@ class CrewClearanceService
         ->limit(1)
         ->first();
     }
+
+
+
+    public function search_crew($id){
+
+
+        return  DB::table('tbl_crew_clearance')
+        ->select( '*')
+        ->where('ref_emp', '=', $id)
+        ->orderBy('id', 'desc')
+        ->limit(1)
+        ->first();
+    }
 }
