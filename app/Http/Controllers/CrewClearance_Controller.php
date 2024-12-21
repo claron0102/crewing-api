@@ -22,18 +22,14 @@ class CrewClearance_Controller extends Controller
     public function conductor_verification($id, Request $request)
     {
 
- 
-     
-
         $employee =  $this->crewClearanceService->search_crew($id);
-    
         if (empty($employee)) {
-          
             return $this->employee_record($id);
-         
-        }else{
+        }
+        else
+        {
         
- $at = $request->query('at');
+        $at = $request->query('at');
         $date_effective='0000-00-00';
         $conductor_data =0;
         $cleared_data =0;
@@ -218,15 +214,15 @@ public function fleet_crew($id, Request $request)
       
     }
 
-   if($checkExisting==false||$checkExisting==true&&$cleared_data=='true'||$checkExisting==true&&$atexisting=='true'){
-    $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$cleared_data);
-    $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$cleared_data);
-   }
-else{
-   return  $this->invalidRequestQuery();
-
-
-}
+    if($checkExisting==false||$checkExisting==true&&$cleared_data=='true' ||$checkExisting==true&&$cleared_data=='invalid'&&$conductor_data!='invalid' ||$checkExisting==true&&$atexisting=='true'){
+        $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$cleared_data);
+        $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$cleared_data);
+       }
+    else{
+       return  $this->invalidRequestQuery();
+    
+    
+    }
 
 
        if (empty($driver))
