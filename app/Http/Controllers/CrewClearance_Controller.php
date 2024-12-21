@@ -220,7 +220,7 @@ public function fleet_crew($id, Request $request)
        
       
         $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$cleared_data);
-    
+
     
     }
     else{
@@ -339,15 +339,15 @@ if(empty($conductor)){
 else{
 
     foreach ($conductor as $record) {
-      if($record->ref_position==3)
+    //   if($record->ref_position==3)
 
-      {
+    //   {
 
-        $conductor_arr ='';
+    //     $conductor_arr ='';
 
 
-      }
-      else{
+    //   }
+    //   else{
       
       
       
@@ -439,7 +439,7 @@ else{
         }
 
 
-}
+//}
 }
          
 
