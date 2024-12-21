@@ -50,27 +50,38 @@ class CrewClearanceService
                 return $query->where('ca.ref_employee', '=', $id);
             })
             ->when(
-                ($type == 1 && $position == 3 && ($cleared_data == null && $conductor_data == null)) || 
-                ($type == 1 && $position == 3 && $conductor_data != 'invalid' && $cleared_data=='true'),
+                ($type == 1 && $position == 3  ),
                 function ($query) use ($id) {
                     return $query->where('ca.ref_bus', '=', $id)
                                  ->where('crew.ref_position', '=', 3);
                 }
             )
             ->when(
-                ($type == 1 && $position != 3 && ($cleared_data == null && $conductor_data == null)) || 
                 ($type == 1 && $position != 3 && $conductor_data != 'invalid' && $cleared_data=='true'),
                 function ($query) use ($id, $conductor_data) {
                     return $query->where('ca.ref_bus', '=', $id)
                                  ->whereIn('crew.ref_position', [4, 186])
-                                 ->orWhere(function ($q) use ($conductor_data, $id) {
-                                     $q->where('crew.ref_emp', $conductor_data)
-                                       ->where('ca.ref_bus', '=', $id)
-                                       ->whereIn('crew.ref_position', [4, 186]);
-                                 });
+                                 ->where('crew.ref_emp', $conductor_data);
+                                
                 }
             )
-            
+            ->when(
+                ($type == 1 && $position != 3 && $conductor_data != 'invalid' && $cleared_data=='invalid'),
+                function ($query) use ($id, $conductor_data) {
+                    return $query->where('ca.ref_bus', '=', $id)
+                                 ->whereIn('crew.ref_position', [4, 186])
+                                 ->where('crew.ref_emp', $conductor_data);
+                                
+                }
+            )
+            ->when(
+                ($type == 1 && $position != 3 && ($cleared_data == null && $conductor_data == null) ),
+                function ($query) use ($id, $conductor_data) {
+                    return $query->where('ca.ref_bus', '=', $id)
+                                 ->whereIn('crew.ref_position', [4, 186]);
+                                 
+                }
+            )
             ->when($at!=null && $type == 0, function ($query) use ($date_effective) {
                
                 return $query->whereRaw('DATE(ca.effective_at) BETWEEN ? AND ?', [
