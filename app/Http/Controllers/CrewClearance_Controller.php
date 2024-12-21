@@ -215,9 +215,14 @@ public function fleet_crew($id, Request $request)
     }
 
     if($checkExisting==false||$checkExisting==true&&$cleared_data=='true' ||$checkExisting==true&&$cleared_data=='invalid'&&$conductor_data!='invalid' ||$checkExisting==true&&$atexisting=='true'){
+      
         $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$cleared_data);
+       
+      
         $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$cleared_data);
-       }
+    
+    
+    }
     else{
        return  $this->invalidRequestQuery();
     
@@ -233,6 +238,9 @@ public function fleet_crew($id, Request $request)
        }
      else{
         foreach ($driver as $record) {
+
+
+           
             if($at==null){
                 $driver_arr = [
                     'id'=>$record->ref_employee,
@@ -251,16 +259,18 @@ public function fleet_crew($id, Request $request)
               }
               else
               {
-                 $nextAssignment='';
+                 $nextAssignment_driver='';
                   
                   if (date("Y-m-d",strtotime($record->effective_at))==date("Y-m-d", strtotime($at))) {
          
-                    $nextAssignment = CrewAssignment::where('effective_at', '=', "{$record->effective_at}")
+                    $nextAssignment_driver = CrewAssignment::where('effective_at', '=', "{$record->effective_at}")
                     ->where('ref_bus',"{$record->ref_bus}")
                     ->where('ref_position',3)
                     ->orderBy('effective_at', 'desc')
                     ->first();
   
+              
+
                     $driver_arr = [
                         'id'=>$record->ref_employee,
                         'classification'=>$record->ref_classification,
@@ -279,16 +289,16 @@ public function fleet_crew($id, Request $request)
                   if (date("Y-m-d",strtotime($record->effective_at))< date("Y-m-d", strtotime($at))) {
 
                       
-                    $nextAssignment = CrewAssignment::whereBetween('effective_at', [DATE("Y-m-d", strtotime($record->effective_at)),  date("Y-m-d", strtotime($at))])
+                    $nextAssignment_driver = CrewAssignment::whereBetween('effective_at', [DATE("Y-m-d", strtotime($record->effective_at)),  date("Y-m-d", strtotime($at))])
                     ->where('ref_bus',"{$record->ref_bus}")
-                    ->whereIn('ref_position',[3])
+                    ->where('ref_position',3)
                     ->orderBy('id', 'desc')
                     
                     ->first();
 
-
+               
                  
-                        if($nextAssignment->ref_employee==$record->ref_employee){
+                        if($nextAssignment_driver->ref_employee==$record->ref_employee){
                             $driver_arr = [
                                 'id'=>$record->ref_employee,
                                 'ref_classification'=>$record->ref_classification,
@@ -306,7 +316,7 @@ public function fleet_crew($id, Request $request)
                         }
                     }
 
-            if ($nextAssignment==null){
+            if ($nextAssignment_driver==null){
 
                 $driver_arr = null;
             }
@@ -321,12 +331,26 @@ public function fleet_crew($id, Request $request)
    
 if(empty($conductor)){
 
+
+    
     $conductor_arr = null;
 
 }
 else{
 
     foreach ($conductor as $record) {
+      if($record->ref_position==3)
+
+      {
+
+        $conductor_arr ='';
+
+
+      }
+      else{
+      
+      
+      
         if($at==null){
             $conductor_arr = [
                 'id'=>$record->ref_employee,
@@ -416,17 +440,18 @@ else{
 
 
 }
-      
+}
+         
 
 
-        
         $dataItem = [
             'timestamp' => now()->toDateTimeString (),
             'driver'=> empty($driver_arr)?null:$driver_arr,
             "conductor"=>empty($conductor_arr)?null:$conductor_arr,
         ];
 
-
+      
+        
       $data=$dataItem;
  
       return response()->json($data);
