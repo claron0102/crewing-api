@@ -189,6 +189,7 @@ public function fleet_crew($id, Request $request)
         $cleared_data='';
         $at='';
         $checkExisting=false;
+        $driver_data='';
         
         if(!empty($request->query())){
             $checkExisting=true; 
@@ -196,7 +197,7 @@ public function fleet_crew($id, Request $request)
             $atexisting=$request->has('at')?true:false;
             $conductor_data = $request->has('conductor')?$request->query('conductor'):'invalid';
             $cleared_data = $request->has('cleared')?$request->query('cleared'):'invalid';
-      
+            $driver_data = $request->has('driver')?$request->query('driver'):'invalid';
       
         }
    
@@ -214,12 +215,15 @@ public function fleet_crew($id, Request $request)
       
     }
 
-    if($checkExisting==false||$checkExisting==true&&$cleared_data=='true' ||$checkExisting==true&&$cleared_data=='invalid'&&$conductor_data!='invalid' ||$checkExisting==true&&$atexisting=='true'){
+
+
+    print_r($cleared_data);
+    if($checkExisting==false||$checkExisting==true&&$cleared_data=='true' ||$checkExisting==true&&$cleared_data=='invalid'&&$driver_data!='invalid'  ||$checkExisting==true&&$cleared_data=='invalid'&&$conductor_data!='invalid' ||$checkExisting==true&&$atexisting=='true'){
       
-        $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$cleared_data);
+        $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$driver_data,$cleared_data);
        
       
-        $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$cleared_data);
+        $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$driver_data,$cleared_data);
 
     
     }

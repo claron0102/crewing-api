@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 class CrewClearanceService
 {
    
-    public function getCrewClearanceDetails(int $id, bool $at= null, string $date_effective = null,$type,$position,$conductor_data,$cleared_data)
+    public function getCrewClearanceDetails(int $id, bool $at= null, string $date_effective = null,$type,$position,$conductor_data,$driver_data,$cleared_data)
     {
 
 
@@ -56,6 +56,26 @@ class CrewClearanceService
                                  ->where('crew.ref_position', '=', 3);
                 }
             )
+
+            ->when(
+                ($type == 1 && $position == 3 && $driver_data != 'invalid' && $cleared_data=='true'),
+                function ($query) use ($id, $driver_data) {
+                    return $query->where('ca.ref_bus', '=', $id)
+                                ->where('crew.ref_position', '=', 3)
+                                 ->where('crew.ref_emp', $driver_data);
+                                
+                }
+            )
+            ->when(
+                ($type == 1 && $position == 3 && $driver_data != 'invalid' && $cleared_data=='invalid'),
+                function ($query) use ($id, $driver_data) {
+                    return $query->where('ca.ref_bus', '=', $id)
+                                ->where('crew.ref_position', '=', 3)
+                                 ->where('crew.ref_emp', $driver_data);
+                                
+                }
+            )
+
             ->when(
                 ($type == 1 && $position != 3 && $conductor_data != 'invalid' && $cleared_data=='true'),
                 function ($query) use ($id, $conductor_data) {
@@ -74,14 +94,25 @@ class CrewClearanceService
                                 
                 }
             )
+
             ->when(
-                ($type == 1 && $position != 3 && ($cleared_data == null && $conductor_data == null) ),
+                ($type == 1 && $position != 3 && ($cleared_data == 'invalid' && $conductor_data == 'invalid'&& $cleared_data=='invalid' ) ),
                 function ($query) use ($id, $conductor_data) {
                     return $query->where('ca.ref_bus', '=', $id)
                                  ->whereIn('crew.ref_position', [4, 186]);
                                  
                 }
             )
+
+            ->when(
+                ($type == 1 && $position != 3 && ($cleared_data == null && $conductor_data == null && $driver_data == null) ),
+                function ($query) use ($id, $conductor_data) {
+                    return $query->where('ca.ref_bus', '=', $id)
+                                 ->whereIn('crew.ref_position', [4, 186]);
+                                 
+                }
+            )
+        
             ->when($at!=null && $type == 0, function ($query) use ($date_effective) {
                
                 return $query->whereRaw('DATE(ca.effective_at) BETWEEN ? AND ?', [
