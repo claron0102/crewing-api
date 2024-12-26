@@ -217,7 +217,7 @@ public function fleet_crew($id, Request $request)
 
 
 
-    print_r($cleared_data);
+   
     if($checkExisting==false||$checkExisting==true&&$cleared_data=='true' ||$checkExisting==true&&$cleared_data=='invalid'&&$driver_data!='invalid'  ||$checkExisting==true&&$cleared_data=='invalid'&&$conductor_data!='invalid' ||$checkExisting==true&&$atexisting=='true'){
       
         $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$driver_data,$cleared_data);
