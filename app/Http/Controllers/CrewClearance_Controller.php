@@ -6,142 +6,66 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use  App\Models\CrewAssignment;
 use  App\Models\Employee;
+use  App\Models\Crew;
+use App\Services\CrewClearanceService;  // Import the service class
+
 class CrewClearance_Controller extends Controller
 {
-  
-    public function index()
+    protected $crewClearanceService;
+
+    // Constructor injection
+    public function __construct(CrewClearanceService $crewClearanceService)
     {
-        $CrewClearance = CrewClearance::get();
-        return response()->json($CrewClearance);
+        $this->crewClearanceService = $crewClearanceService;
     }
-
-    public function show($id, Request $request)
+ 
+    public function conductor_verification($id, Request $request)
     {
 
- 
-        $employee = $this->employee_record_list($id);
+        $employee =  $this->crewClearanceService->search_crew($id);
         if (empty($employee)) {
-            return $this->employeenotfound($id);
+            return $this->employee_record($id);
         }
-    
-        // Get 'at' query parameter
+        else
+        {
+        
         $at = $request->query('at');
         $date_effective='0000-00-00';
+        $conductor_data =0;
+        $cleared_data =0;
+     
          if(!empty($at))  
             {
-                $earliestEffectiveAt = DB::table('tbl_crew_assignments')
-                ->select('effective_at', 'ref_bus')
-                ->where('ref_employee', '=', $id)
-                ->whereDate('effective_at', '<=', $at)
-                ->orderBy('id', 'desc')
-                ->limit(1)
-                ->first();
-        
+
+            $earliestEffectiveAt=$this->crewClearanceService->effectivity_crew_specific($id,$at);
+           
+          
             if (empty($earliestEffectiveAt)) {
                 return $this->employeenotfound($id);
             }
     
-        $nxt_sched = DB::table('tbl_crew_assignments')
-        ->where('ref_bus', '=',$earliestEffectiveAt->ref_bus)  // Pass the ref_employee dynamically
-        ->where(DB::raw("DATE_FORMAT(effective_at, '%Y-%m-%d')"), '>',date("Y-m-d", strtotime($at)))
-        ->orderBy('id', 'asc')
-        ->limit(1)
-        ->pluck('effective_at')
-        ->first();
-    
-
-         $date_effective=date("Y-m-d", strtotime($earliestEffectiveAt->effective_at));   
+            $nxt_sched=$this->crewClearanceService->next_schedule($earliestEffectiveAt->ref_bus,$at);
+            $date_effective=date("Y-m-d", strtotime($earliestEffectiveAt->effective_at));   
           
         }
 
-      $fleet = DB::table('tbl_crew_clearance as crew')
-      ->join('tbl_crew_assignments as ca', function ($join) {
-          $join->on('crew.ref_emp', '=', 'ca.ref_employee')
-               ->on('crew.ref_bus', '=', 'ca.ref_bus')
-               ->whereRaw('DATE(ca.effective_at) = crew.clearance_date');
-      })
-            ->join('hrpmsys_02.employee_list as emp', 'emp.index_id', '=', 'ca.ref_employee')
-            ->join('erp_wpf.tbl_fleet_management as bus', 'ca.ref_bus', '=', 'bus.id')
-            ->select(  
-                'ca.effective_at',
-                'crew.datetime_created',
-                'ca.ref_bus',
-               DB::raw('LOWER(ca.ref_classification) as ref_classification'),
-                'ca.ref_position',
-                'ca.ref_employee',
-                'bus.bus_no',
-                DB::raw('LOWER(emp.fullname) as fullname'),
-                DB::raw('LOWER(emp.positionname) as positionname'),
-                'emp.employeeids as emp_id',
-                 'emp.companies as company',
-                'emp.companiesid as comp_id',
-                'crew.flag',
-                DB::raw("CASE
-                            WHEN crew.flag = 2 THEN 'cleared'
-                            WHEN crew.flag = 1 THEN 'pending'
-                            ELSE 'revoked'
-                            END as status_flag"),
-                DB::raw("CASE
-                            WHEN crew.flag = 3 THEN 'The conductor clearance has been revoked due to a policy violation. The conductor is no longer authorized to operate this fleet.'
-                            WHEN crew.flag = 1 THEN ''
-                            ELSE ''
-                            END as status_desc")
-            )
-            ->where('ca.ref_employee', '=', $id)
+        $fleet = $this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,0,0,$conductor_data,$cleared_data);
+      
+          $timestamp = now()->toISOString();  
+         
+            $data =array();
+            if (empty($fleet)|| count($fleet)==0) {
+                $employee=$this->employee_record($id);
+            return $employee;
+            }
 
-           
-            ->when($at, function ($query) use ($at, $date_effective) {
-                // This closure runs if $at is truthy
-                return $query->whereRaw('DATE(ca.effective_at) BETWEEN ? AND ?', [
-                        date("Y-m-d", strtotime($date_effective)), // Start date
-                        now()->toDateString() // End date (current date)
-                    ])
-                    ->orderBy('crew.id', 'asc') // Order by crew.id ascending
-                    ->limit(1); // Limit to 1 result
-            }, function ($query) {
-                // This closure runs if $at is falsy
-                return $query->where('ca.effective_at', '<=', now()) // Filter records with effective_at <= now
-                    ->orderBy('crew.id', 'desc') // Order by crew.id descending
-                    ->limit(1); // Limit to 1 result
-            })
-            
-      ->groupBy(
-          'crew.ref_emp',
-          'crew.flag',
-          'ca.effective_at',
-          'crew.datetime_created',
-          'ca.ref_bus',
-          'bus.bus_no',
-          'ca.ref_classification',
-          'ca.ref_position',
-          'ca.ref_employee',
-          'emp.fullname',
-          'emp.positionname',
-          'emp.employeeids',
-          'emp.companies',
-          'emp.companiesid'
-      )
-      ->get();
-   
-
-    
-      $timestamp = now()->toISOString();  
-   
-      $data =array();
-      if (empty($fleet)) {
-         $employee=$this->employee_record($id);
-       
-      }
-
-      foreach ($fleet as $record) {
-          $fleetData = [
+             foreach ($fleet as $record) {
+                $fleetData = [
               'id'=>$record->ref_bus,
               'bus_no'=>$record->bus_no,
               'company'=>[
                   'id'=>$record->comp_id,
                   'name'=>$record->company
-
-
               ]
         ];
 
@@ -192,12 +116,13 @@ class CrewClearance_Controller extends Controller
 
                   }
                    
-                      if (date("Y-m-d",strtotime($record->effective_at))< date("Y-m-d", strtotime($at))) {
+                   if (date("Y-m-d",strtotime($record->effective_at))< date("Y-m-d", strtotime($at))) {
                       $nextAssignment = CrewAssignment::whereBetween('effective_at', [DATE("Y-m-d", strtotime($record->effective_at)),  date("Y-m-d", strtotime($at))])
                       ->where('ref_bus',"{$record->ref_bus}")
+                      ->whereIn('ref_position',[4,186])
                       ->orderBy('id', 'desc')
                       ->first();
-
+                   
                           if($nextAssignment->ref_employee==$record->ref_employee){
                               $dataItem = [
                                 'timestamp' => now()->toDateTimeString(),
@@ -214,7 +139,7 @@ class CrewClearance_Controller extends Controller
                                   'timestamp' => now()->toDateTimeString(),
                                   "status"=>"unassigned",
                                   "fleet"=> null,
-                                  "error"=> "No fleet assigned to this conductor at the given time."
+                                  "error"=> "Nos fleet assigned to this conductor at the given time."
                                 ];
                           }
                       }
@@ -234,31 +159,315 @@ class CrewClearance_Controller extends Controller
     }
     return response()->json($data);
 
+
+
+        }
+    
+       
+    }
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////////////////
+public function fleet_crew($id, Request $request)
+{
+   /// GET v1/fleets/1234/crew?at=2024-12-01T12:00:00Z
+
+    $data=array();
+    $driver_arr=array();
+    $conductor_arr=array();
+
+    $crew = Crew::where('id', '=',$id)
+    ->first();
+        if (empty($crew)) {
+            return $this->crewnotfound($id);
+        }
+
+        
+        $date_effective='';
+        $conductor_data='';
+        $cleared_data='';
+        $at='';
+        $checkExisting=false;
+        $driver_data='';
+        
+        if(!empty($request->query())){
+            $checkExisting=true; 
+            $at = $request->query('at');
+            $atexisting=$request->has('at')?true:false;
+            $conductor_data = $request->has('conductor')?$request->query('conductor'):'invalid';
+            $cleared_data = $request->has('cleared')?$request->query('cleared'):'invalid';
+            $driver_data = $request->has('driver')?$request->query('driver'):'invalid';
+      
+        }
+   
+   
+        if(!empty($at))  
+        {
+
+        $earliestEffectiveAt=$this->crewClearanceService->effectivity_crew($id,$at);
+        if (empty($earliestEffectiveAt)) {
+            return $this->employeenotfound($id);
+        }
+
+        $nxt_sched=$this->crewClearanceService->next_schedule($earliestEffectiveAt->ref_bus,$at);
+        $date_effective=date("Y-m-d", strtotime($earliestEffectiveAt->effective_at));   
+      
     }
 
 
 
- private function employeenotfound($id){
-
-     return response()->json([
-            'error' =>'Not Found',
-            'message' => 'Conductor with ID '.$id.' does not exist.'
-        ], 404);
- }
-    private function employee_record_list($emp_id){
-        $employee = Employee::where('index_id', '=',$emp_id)
-        ->orderBy('index_id', 'asc')
-        ->first();
-
-        return $employee;
-            
-        }
+   
+    if($checkExisting==false||$checkExisting==true&&$cleared_data=='true' ||$checkExisting==true&&$cleared_data=='invalid'&&$driver_data!='invalid'  ||$checkExisting==true&&$cleared_data=='invalid'&&$conductor_data!='invalid' ||$checkExisting==true&&$atexisting=='true'){
+      
+        $driver=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,3,$conductor_data,$driver_data,$cleared_data);
        
+      
+        $conductor=$this->crewClearanceService->getCrewClearanceDetails($id, $at, $date_effective,1,4,$conductor_data,$driver_data,$cleared_data);
+
+    
+    }
+    else{
+       return  $this->invalidRequestQuery();
+    
+    
+    }
+
+
+       if (empty($driver))
+       {
+
+        $driver_arr = null;
+
+       }
+     else{
+        foreach ($driver as $record) {
+
+
+           
+            if($at==null){
+                $driver_arr = [
+                    'id'=>$record->ref_employee,
+                    'classification'=>$record->ref_classification,
+                    'company'=>[
+                            'id'=>$record->comp_id,
+                            'name'=>$record->company
+                    ],
+                    'clearance_status'=>$record->status_flag,
+                 
+                ];
+                if($record->flag==1)
+                {
+                $driver_arr['clearance_reason']="The driver has pending clearance request.";
+                }
+              }
+              else
+              {
+                 $nextAssignment_driver='';
+                  
+                  if (date("Y-m-d",strtotime($record->effective_at))==date("Y-m-d", strtotime($at))) {
+         
+                    $nextAssignment_driver = CrewAssignment::where('effective_at', '=', "{$record->effective_at}")
+                    ->where('ref_bus',"{$record->ref_bus}")
+                    ->where('ref_position',3)
+                    ->orderBy('effective_at', 'desc')
+                    ->first();
+  
+              
+
+                    $driver_arr = [
+                        'id'=>$record->ref_employee,
+                        'classification'=>$record->ref_classification,
+                        'company'=>[
+                                'id'=>$record->comp_id,
+                                'name'=>$record->company
+                        ],
+                        'clearance_status'=>$record->flag=3?'cleared':$record->status_flag,
+                         'assigned_at'=>$record->effective_at,
+                        'effective_at'=>$nxt_sched
+                    ];
+
+
+                  }
+              
+                  if (date("Y-m-d",strtotime($record->effective_at))< date("Y-m-d", strtotime($at))) {
+
+                      
+                    $nextAssignment_driver = CrewAssignment::whereBetween('effective_at', [DATE("Y-m-d", strtotime($record->effective_at)),  date("Y-m-d", strtotime($at))])
+                    ->where('ref_bus',"{$record->ref_bus}")
+                    ->where('ref_position',3)
+                    ->orderBy('id', 'desc')
+                    
+                    ->first();
+
+               
+                 
+                        if($nextAssignment_driver->ref_employee==$record->ref_employee){
+                            $driver_arr = [
+                                'id'=>$record->ref_employee,
+                                'ref_classification'=>$record->ref_classification,
+                                'company'=>[
+                                    'id'=>$record->comp_id,
+                                    'name'=>$record->company
+                                     ],
+                                'clearance_status'=>$record->flag=3?'cleared':$record->status_flag,
+                                 'assigned_at'=>$record->effective_at,
+                                'effective_at'=>$nxt_sched
+                            ];
+                        }
+                        else{
+                            $driver_arr =null;
+                        }
+                    }
+
+            if ($nextAssignment_driver==null){
+
+                $driver_arr = null;
+            }
+              
+              ///END DRIVER DATA
+                }
+
+
+            }
+     }
+        
+   
+if(empty($conductor)){
+
+
+    
+    $conductor_arr = null;
+
+}
+else{
+
+    foreach ($conductor as $record) {
+    //   if($record->ref_position==3)
+
+    //   {
+
+    //     $conductor_arr ='';
+
+
+    //   }
+    //   else{
+      
+      
+      
+        if($at==null){
+            $conductor_arr = [
+                'id'=>$record->ref_employee,
+                'classification'=>$record->ref_classification,
+                'company'=>[
+                    'id'=>$record->comp_id,
+                    'name'=>$record->company
+                     ],
+                'clearance_status'=>$record->status_flag,
+             
+            ];
+            if($record->flag==1)
+            {
+            $conductor_arr['clearance_reason']="The driver has pending clearance request.";
+            }
+          }
+          
+
+
+          else
+          {
+             $nextAssignment='';
+              
+              if (date("Y-m-d",strtotime($record->effective_at))==date("Y-m-d", strtotime($at))) {
+     
+                $nextAssignment = CrewAssignment::where('effective_at', '=', "{$record->effective_at}")
+                ->where('ref_bus',"{$record->ref_bus}")
+                ->whereIn('ref_position',[4,186])
+                ->orderBy('effective_at', 'desc')
+                ->first();
+
+                $conductor_arr = [
+                    'id'=>$record->ref_employee,
+                    'classification'=>$record->ref_classification,
+                    'company'=>[
+                        'id'=>$record->comp_id,
+                        'name'=>$record->company
+                        ],
+                    'clearance_status'=>$record->flag=3?'cleared':$record->status_flag,
+                     'assigned_at'=>$record->effective_at,
+                    'effective_at'=>$nxt_sched
+                ];
+
+
+              }
+              
+              if (date("Y-m-d",strtotime($record->effective_at))< date("Y-m-d", strtotime($at))) {
+
+                  
+                $nextAssignment = CrewAssignment::whereBetween('effective_at', [DATE("Y-m-d", strtotime($record->effective_at)),  date("Y-m-d", strtotime($at))])
+                ->where('ref_bus',"{$record->ref_bus}")
+                ->whereIn('ref_position',[4,186])
+                ->orderBy('id', 'desc')
+                
+                ->first();
+
+            
+             
+                    if($nextAssignment->ref_employee==$record->ref_employee){
+                        $conductor_arr = [
+                            'id'=>$record->ref_employee,
+                            'classification'=>$record->ref_classification,
+                            'company'=>[
+                                'id'=>$record->comp_id,
+                                'name'=>$record->company
+                                 ],
+                            'clearance_status'=>$record->flag=3?'cleared':$record->status_flag,
+                             'assigned_at'=>$record->effective_at,
+                            'effective_at'=>$nxt_sched
+                        ];
+                    }
+                    else{
+                        $conductor_arr  = null;
+                    }
+                }
+
+        if ($nextAssignment==null){
+
+            $conductor_arr = null;
+        }
+          
+          ///END CONDUCTOR DATA
+            }
+
+
+        }
+
+
+//}
+}
+         
+
+
+        $dataItem = [
+            'timestamp' => now()->toDateTimeString (),
+            'driver'=> empty($driver_arr)?null:$driver_arr,
+            "conductor"=>empty($conductor_arr)?null:$conductor_arr,
+        ];
+
+      
+        
+      $data=$dataItem;
+ 
+      return response()->json($data);
+
+
+
+
+}
 
     private function employee_record($emp_id){
-        $employee = Employee::where('index_id', '=',$emp_id)
-        ->orderBy('index_id', 'asc')
-        ->first();
+     
+        $employee =$this->employee_record_list($emp_id);
 
         if(!empty($employee)){
 
@@ -266,24 +475,42 @@ class CrewClearance_Controller extends Controller
                 'timestamp' => now()->toDateTimeString(),
                 "status"=>"unassigned",
                 "fleet"=> null,
-                "error"=> "No fleet assigned to this conductor at the given time."
+                "error"=> "no fleet assigned to this conductor at the given time."
             ],);
-
-            
-        }
-        else
-        {
-            return response()->json([
-                'error' =>'Not Found',
-                'message' => 'Conductor with ID '.$emp_id.' does not exist.'
-            ], 404);
-
-         
-        }
-  
+              }
+            else
+                {
+                    return response()->json([
+                        'error' =>'not found',
+                        'message' => 'conductor with ID '.$emp_id.' does not exist.' ], 404);
+                }
     }
 
-  
 
+    private function employeenotfound($id){
+        return response()->json([
+               'error' =>'not found',
+               'message' => 'conductor with ID '.$id.' does not exist.' ], 404);
+       }
+  private function invalidRequestQuery(){
+    return response()->json([
+        'error' => 'invalid parameter',
+        'message' => 'please check the provided parameters.',
+    ], 400);
+       }
+   
+    private function employee_record_list($emp_id){
+       $employee = Employee::where('index_id', '=',$emp_id)
+           ->orderBy('index_id', 'asc')
+           ->first();
+           return $employee;
+           }
  
+    private function crewnotfound($id){
+       return response()->json([
+          'error' =>'not Found',
+          'message' => 'conductor with ID '.$id.' does not exist.'], 404);
+        }
+
+
 }

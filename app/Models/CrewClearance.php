@@ -10,7 +10,7 @@ class CrewClearance extends Model
 
     protected $table = 'tbl_crew_clearance'; // Specify the table name
 
-    // Fillable properties for mass-assignment
+  
     protected $fillable = [
         'ref_bus', 'company_id', 'clearance_date', 'ref_emp', 'ref_position',
         'ref_checklist', 'remarks', 'datetime_created', 'expired_at', 

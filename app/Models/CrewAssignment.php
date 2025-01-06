@@ -8,10 +8,10 @@ class CrewAssignment extends Model
 {
     protected $table = 'tbl_crew_assignments';
 
-    // If your table doesn't use the default 'created_at' and 'updated_at' columns, you can disable them
+   
     public $timestamps = true;
 
-    // If you want to specify which columns are mass assignable
+  
     protected $fillable = [
         'ref_bus',
         'ref_employee',
